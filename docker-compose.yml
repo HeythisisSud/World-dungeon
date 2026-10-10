@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # 1. Local AI Model Server (Ollama)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: world-dungeon-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+
+  # 2. Quest Generation & Spatial Lore Backend
+  backend:
+    build:
+      context: ./world-dungeon-backend
+      dockerfile: Dockerfile
+    container_name: world-dungeon-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=gemma2:2b
+      - FRONTEND_URL=http://localhost:3000
+      - SERPAPI_KEY=${SERPAPI_KEY:-}
+    depends_on:
+      - ollama
+
+  # 3. Next.js PWA Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_BACKEND_URL: http://localhost:3001
+        NEXT_PUBLIC_MAPILLARY_TOKEN: ${NEXT_PUBLIC_MAPILLARY_TOKEN:-}
+        NEXT_PUBLIC_ELEVENLABS_KEY: ${NEXT_PUBLIC_ELEVENLABS_KEY:-}
+    container_name: world-dungeon-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - BACKEND_URL=http://backend:3001
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
+      - NEXT_PUBLIC_MAPILLARY_TOKEN=${NEXT_PUBLIC_MAPILLARY_TOKEN:-}
+      - NEXT_PUBLIC_ELEVENLABS_KEY=${NEXT_PUBLIC_ELEVENLABS_KEY:-}
+      - ELEVENLABS_KEY=${NEXT_PUBLIC_ELEVENLABS_KEY:-}
+    depends_on:
+      - backend
+
+volumes:
+  ollama_models:
