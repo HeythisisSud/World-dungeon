@@ -137,29 +137,31 @@ export default function WalkPage() {
     }
   }, [currentQuest, router]);
 
-  if (!currentQuest || !currentWaypoint) return null;
-
-  const totalWaypoints = currentQuest.waypoints.length;
-  const userLat = position?.lat ?? currentWaypoint.coords.lat;
-  const userLng = position?.lng ?? currentWaypoint.coords.lng;
+  const totalWaypoints = currentQuest?.waypoints.length || 0;
+  const userLat = position?.lat ?? currentWaypoint?.coords.lat ?? 0;
+  const userLng = position?.lng ?? currentWaypoint?.coords.lng ?? 0;
   const userHeading = position?.heading ?? null;
 
   // Real-time distance in meters to active waypoint
-  const rawDistance = calculateDistanceMeters(
-    userLat,
-    userLng,
-    currentWaypoint.coords.lat,
-    currentWaypoint.coords.lng
-  );
+  const rawDistance = currentWaypoint
+    ? calculateDistanceMeters(
+        userLat,
+        userLng,
+        currentWaypoint.coords.lat,
+        currentWaypoint.coords.lng
+      )
+    : 999999;
 
   // Direction arrow
-  const directionArrow = getDirectionArrow(
-    userLat,
-    userLng,
-    currentWaypoint.coords.lat,
-    currentWaypoint.coords.lng,
-    userHeading
-  );
+  const directionArrow = currentWaypoint
+    ? getDirectionArrow(
+        userLat,
+        userLng,
+        currentWaypoint.coords.lat,
+        currentWaypoint.coords.lng,
+        userHeading
+      )
+    : "↑";
 
   // Roman numeral indexes
   const romanNumeral = ROMAN_NUMERALS[currentWaypointIndex] || `${currentWaypointIndex + 1}`;
@@ -180,6 +182,8 @@ export default function WalkPage() {
 
   // Trigger Encounter State when within 20m (strictly once per waypoint)
   useEffect(() => {
+    if (!currentQuest || !currentWaypoint) return;
+
     if (
       rawDistance <= 20 &&
       !isEncounterState &&
@@ -224,12 +228,14 @@ export default function WalkPage() {
     unlockedWaypoints,
     unlockWaypoint,
     currentWaypoint,
+    currentQuest,
     preGeneratedAudio,
     narrateWaypoint,
   ]);
 
   // Toast notification for lore hint
   const handleShowHint = () => {
+    if (!currentWaypoint) return;
     const hintText = currentWaypoint.surfaceObservation?.split(".")[0] ||
       currentWaypoint.loreFragment.split(".")[0] ||
       "Follow the gold line toward the destination.";
@@ -243,6 +249,7 @@ export default function WalkPage() {
 
   // Voice playback trigger (stops any previous audio first)
   const handlePlayVoice = (overrideVoiceId?: string) => {
+    if (!currentWaypoint) return;
     stopVoice();
     if (encounterTimeoutRef.current) clearTimeout(encounterTimeoutRef.current);
 
@@ -289,6 +296,17 @@ export default function WalkPage() {
     setIsEncounterState(false);
     setIsBuriedHistoryRevealed(false);
   };
+
+  if (!currentQuest || !currentWaypoint) {
+    return (
+      <div className="min-h-screen bg-dungeon-bg flex flex-col items-center justify-center p-6 text-center space-y-3">
+        <span className="font-cinzel text-2xl text-dungeon-gold animate-pulse">◆</span>
+        <p className="font-cinzel text-xs text-dungeon-gold/70 tracking-[0.3em] uppercase">
+          COMMUNING WITH THE REALM...
+        </p>
+      </div>
+    );
+  }
 
   // Resolve hero image URL (Mapillary or Wikimedia)
   const heroImageUrl = currentWaypoint.mapillaryImageUrl || currentWaypoint.fetchedImageUrl || null;

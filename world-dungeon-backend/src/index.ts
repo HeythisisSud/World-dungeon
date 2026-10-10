@@ -78,14 +78,17 @@ for (const signal of shutdownSignals) {
 try {
   await server.listen({ port: config.PORT, host: '0.0.0.0' })
 
-  const ollamaShort = config.OLLAMA_URL.replace('http://', '')
+  const isGroq = !config.USE_LOCAL_OLLAMA && Boolean(config.GROQ_API_KEY)
+  const provider = isGroq ? 'Groq (Cloud)' : 'Ollama (Local)'
+  const activeModel = isGroq ? config.GROQ_MODEL : config.OLLAMA_MODEL
+
   console.log(`
 ╔══════════════════════════════════════╗
 ║       WORLD DUNGEON BACKEND          ║
 ║       Running on :${config.PORT}              ║
-║       Ollama: ${ollamaShort.padEnd(22)}║
-║       Model:  ${config.OLLAMA_MODEL.padEnd(22)}║
-║       SerpApi: ${config.SERPAPI_KEY ? 'configured      ' : 'not configured  '}     ║
+║       Inference: ${provider.padEnd(19)}║
+║       Model:     ${activeModel.padEnd(19)}║
+║       SerpApi:   ${config.SERPAPI_KEY ? 'configured       ' : 'not configured   '}║
 ╚══════════════════════════════════════╝
 
   → Health:   http://localhost:${config.PORT}/api/health

@@ -25,6 +25,9 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GROQ_MODEL=${GROQ_MODEL:-gemma2-9b-it}
+      - USE_LOCAL_OLLAMA=${USE_LOCAL_OLLAMA:-false}
       - OLLAMA_URL=http://ollama:11434
       - OLLAMA_MODEL=gemma2:2b
       - FRONTEND_URL=http://localhost:3000

@@ -3,7 +3,7 @@ import { GenerateQuestRequestSchema, type Quest } from '../validators/questSchem
 import { fetchLandmarks, type OSMLandmark } from '../services/overpass.js'
 import { enrichLandmark } from '../services/serpapi.js'
 import { buildQuestPrompt } from '../prompts/questPrompt.js'
-import { generateQuestFromOllama, checkOllamaHealth } from '../services/ollama.js'
+import { generateQuestFromLLM, checkLLMHealth } from '../services/ollama.js'
 import { fetchPlaceImage } from '../services/wikimedia.js'
 import { config } from '../config.js'
 
@@ -114,14 +114,19 @@ export async function generateQuestRoute(server: FastifyInstance): Promise<void>
       server.log.warn(`OSM fetch failed: ${(err as Error).message}. Will use procedural offsets near coordinates.`)
     }
 
-    // 3. Check Ollama availability
-    const ollamaHealth = await checkOllamaHealth().catch(() => ({ connected: false }))
+    // 3. Check LLM availability (Groq or Ollama)
+    const llmHealth = await checkLLMHealth().catch(() => ({
+      connected: false,
+      model: 'none',
+      provider: 'ollama' as const,
+      url: '',
+    }))
 
     let quest: Quest | null = null
     let modelUsed = 'procedural-osm'
     let generationMs = 0
 
-    if (ollamaHealth.connected && landmarks.length >= 3) {
+    if (llmHealth.connected && landmarks.length >= 3) {
       // 4. Enrich top 4 landmarks via SerpApi in parallel (optional)
       const enriched = config.SERPAPI_KEY != null
       if (enriched) {
@@ -136,16 +141,16 @@ export async function generateQuestRoute(server: FastifyInstance): Promise<void>
         }
       }
 
-      // 5. Build prompt and query Ollama
+      // 5. Build prompt and query LLM (Groq or Ollama)
       const prompt = buildQuestPrompt(landmarks, tone)
-      const ollamaStart = Date.now()
+      const llmStart = Date.now()
       try {
-        quest = await generateQuestFromOllama(prompt)
-        generationMs = Date.now() - ollamaStart
-        modelUsed = config.OLLAMA_MODEL
-        server.log.info(`Ollama generated quest in ${generationMs}ms`)
+        quest = await generateQuestFromLLM(prompt)
+        generationMs = Date.now() - llmStart
+        modelUsed = `${llmHealth.provider}:${llmHealth.model}`
+        server.log.info(`LLM (${llmHealth.provider}) generated quest in ${generationMs}ms`)
       } catch (err) {
-        server.log.warn(`Ollama generation failed: ${(err as Error).message}. Falling back to procedural OSM synthesis at user coords.`)
+        server.log.warn(`LLM generation failed: ${(err as Error).message}. Falling back to procedural OSM synthesis at user coords.`)
         quest = null
       }
     }

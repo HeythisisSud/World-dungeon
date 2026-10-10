@@ -24,9 +24,26 @@ World Dungeon is a location-based dark fantasy fitness RPG that turns real-world
                                               │                             │
                                               ▼                             ▼
                                      ┌────────────────┐            ┌────────────────┐
-                                     │  Overpass API  │            │   Ollama LLM   │
-                                     │ (OpenStreetMap)│            │  (gemma2:2b)   │
+                                     │  Overpass API  │            │  LLM Inference │
+                                     │ (OpenStreetMap)│            │ (Groq / Ollama)│
                                      └────────────────┘            └────────────────┘
+```
+
+---
+
+## 🤖 Dual-Mode Open-Weight Inference (Groq & Ollama)
+
+World Dungeon uses the **Gemma2 open-weight model family** for spatial lore generation:
+* **Production Cloud Mode (Default)**: Uses **Gemma2-9b-it** hosted on Groq (`https://api.groq.com/openai/v1/chat/completions`) for sub-second quest synthesis with guaranteed JSON schema compliance.
+* **Local Offline Mode**: Set `USE_LOCAL_OLLAMA=true` to run against your local **Gemma2:2b** instance via Ollama (`http://localhost:11434`) with zero code changes.
+
+### Local Development Commands:
+```bash
+# 1. Run in Production Cloud Mode (Groq):
+GROQ_API_KEY=gsk_your_key USE_LOCAL_OLLAMA=false npm run dev
+
+# 2. Run in Local Offline Mode (Ollama):
+USE_LOCAL_OLLAMA=true npm run dev
 ```
 
 ---
@@ -44,7 +61,9 @@ World Dungeon is a location-based dark fantasy fitness RPG that turns real-world
    * **Start Command**: `npm start`
 5. Add Environment Variables:
    * `PORT`: `3001`
-   * `OLLAMA_URL`: URL to your Ollama instance (or leave default for automated fallback to OpenStreetMap lore generator)
+   * `GROQ_API_KEY`: Your Groq API key (free at https://console.groq.com)
+   * `GROQ_MODEL`: `gemma2-9b-it`
+   * `USE_LOCAL_OLLAMA`: `false`
    * `ALLOWED_ORIGINS`: `https://your-frontend.vercel.app`
 6. Note the deployed backend URL (e.g. `https://world-dungeon-api.onrender.com`).
 
@@ -74,6 +93,7 @@ On any Ubuntu / Debian / Linux server with Docker and Docker Compose installed:
    ```bash
    export NEXT_PUBLIC_MAPILLARY_TOKEN="MLY|..."
    export NEXT_PUBLIC_ELEVENLABS_KEY="sk_..."
+   export GROQ_API_KEY="gsk_..."
    ```
 
 3. Launch all services:
@@ -81,7 +101,7 @@ On any Ubuntu / Debian / Linux server with Docker and Docker Compose installed:
    docker-compose up -d --build
    ```
 
-4. Download the Ollama model:
+4. If running local Ollama:
    ```bash
    docker exec -it world-dungeon-ollama ollama pull gemma2:2b
    ```
@@ -89,7 +109,6 @@ On any Ubuntu / Debian / Linux server with Docker and Docker Compose installed:
 5. Access your dungeon:
    * Frontend: `http://your-server-ip:3000`
    * Backend API: `http://your-server-ip:3001/api/health`
-   * Ollama: `http://your-server-ip:11434`
 
 ---
 
@@ -103,8 +122,6 @@ On any Ubuntu / Debian / Linux server with Docker and Docker Compose installed:
 
 ---
 
-## 🩺 Health Check & Diagnostics
+## 💡 Open Source Innovation (DEV Post Submission Note)
 
-* **Frontend Status**: `GET /api/health`
-* **Backend Status**: `GET http://localhost:3001/api/health`
-* **TTS Voice Verification**: `POST /api/tts` with JSON `{"text":"Sanctum reached","voiceId":"onwK4e9ZLuTAKqWW03F9"}`
+> "The inference layer uses Gemma2-9b-it hosted on Groq for the deployed version — the same open-weight Gemma2 model family I benchmarked locally, now running on Groq's free inference infrastructure. The model is swappable: set `USE_LOCAL_OLLAMA=true` and the exact same code runs against local Gemma2:2b via Ollama with zero other changes. This is the open-weight advantage — the model is not locked to any provider. Local, Groq, DigitalOcean GPU, or any Ollama-compatible endpoint: one env var."

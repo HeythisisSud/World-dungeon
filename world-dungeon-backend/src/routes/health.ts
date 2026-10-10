@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
-import { checkOllamaHealth } from '../services/ollama.js'
+import { checkLLMHealth } from '../services/ollama.js'
 import { checkOverpassHealth } from '../services/wikimedia.js'
 import { config } from '../config.js'
 
@@ -10,21 +10,21 @@ export async function healthRoute(server: FastifyInstance): Promise<void> {
     _request: FastifyRequest,
     reply: FastifyReply
   ) => {
-    // Run Ollama and Overpass checks in parallel
-    const [ollama, overpassReachable] = await Promise.all([
-      checkOllamaHealth(),
+    // Run LLM and Overpass checks in parallel
+    const [llm, overpassReachable] = await Promise.all([
+      checkLLMHealth(),
       checkOverpassHealth(),
     ])
 
-    const ollamaStatus = ollama.connected ? 'connected' : 'unavailable'
+    const llmStatus = llm.connected ? 'connected' : 'unavailable'
     const overpassStatus = overpassReachable ? 'reachable' : 'unreachable'
     const serpApiStatus = config.SERPAPI_KEY ? 'configured' : 'not_configured'
 
     // Overall status logic
     let status: 'ok' | 'degraded' | 'error'
-    if (ollama.connected && overpassReachable) {
+    if (llm.connected && overpassReachable) {
       status = 'ok'
-    } else if (!ollama.connected && !overpassReachable) {
+    } else if (!llm.connected && !overpassReachable) {
       status = 'error'
     } else {
       status = 'degraded'
@@ -33,10 +33,16 @@ export async function healthRoute(server: FastifyInstance): Promise<void> {
     return reply.status(200).send({
       status,
       services: {
+        llm: {
+          provider: llm.provider,
+          status: llmStatus,
+          model: llm.model,
+          url: llm.url,
+        },
         ollama: {
-          status: ollamaStatus,
-          model: ollama.model,
-          url: ollama.url,
+          status: llm.provider === 'ollama' ? llmStatus : 'cloud_mode',
+          model: llm.model,
+          url: llm.url,
         },
         serpapi: {
           status: serpApiStatus,
